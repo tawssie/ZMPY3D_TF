@@ -27,7 +27,7 @@ import argparse
 import os
 import sys
 
-import ZMPY_TF as z
+import ZMPY3D_TF as z
 
 # Full procedure to calculate ZM and moment in a single graph component
 @tf.function
@@ -108,7 +108,7 @@ def CalZM_Geo_ScoreScaled(data1, data2,ZMIndex,ZMWeight,GeoWeight):
 
     return GeoScoreScaled, ZMScoreScaled
 
-def ZMPY_TF_CLI_BatchShapeScore(PDBFileNameA, PDBFileNameB,GridWidth):
+def ZMPY3D_TF_CLI_BatchShapeScore(PDBFileNameA, PDBFileNameB,GridWidth):
 
     MaxOrder=int(20)
     
@@ -122,7 +122,7 @@ def ZMPY_TF_CLI_BatchShapeScore(PDBFileNameA, PDBFileNameB,GridWidth):
     # with open('./cache_data/LogG_CLMCache_MaxOrder{:02d}.pkl'.format(MaxOrder), 'rb') as file: # Can be used in ipynb, but not at the entry point. 
         CachePKL = pickle.load(file)
     
-    # Extract all cached variables from pickle. These will be converted into a tensor/cupy objects for ZMPY_CP and ZMPY_TF.
+    # Extract all cached variables from pickle. These will be converted into a tensor/cupy objects for ZMPY3D_CP and ZMPY3D_TF.
     BinomialCache= tf.convert_to_tensor(BinomialCachePKL['BinomialCache'], dtype=tf.float64)
     
     # GCache, CLMCache, and all RotationIndex
@@ -195,7 +195,7 @@ def ZMPY_TF_CLI_BatchShapeScore(PDBFileNameA, PDBFileNameB,GridWidth):
 
 def main():
     if len(sys.argv) != 3:
-        print('Usage: ZMPY_TF_CLI_BatchShapeScore PDBFileList.txt GridWidth')
+        print('Usage: ZMPY3D_TF_CLI_BatchShapeScore PDBFileList.txt GridWidth')
         print('       This function takes a list of paired PDB structure file paths and a grid width to generate shape analysis scores.')
         print("Error: You must provide exactly one input file and a grid width.")
         sys.exit(1)
@@ -244,7 +244,7 @@ def main():
         file_list_1.append(file1)
         file_list_2.append(file2)
 
-    GeoScoreScaled, ZMScoreScaled=ZMPY_TF_CLI_BatchShapeScore(file_list_1,file_list_2,GridWidth)
+    GeoScoreScaled, ZMScoreScaled=ZMPY3D_TF_CLI_BatchShapeScore(file_list_1,file_list_2,GridWidth)
 
     # print('Left, the scaled score for the geometric descriptor.')
     # print('Right, the scaled score for the Zernike moments.')

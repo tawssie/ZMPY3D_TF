@@ -27,20 +27,23 @@ import argparse
 import os
 import sys
 
-import ZMPY_TF as z
+import ZMPY3D_TF as z
 
+# Full procedure to calculate superposition for a single graph component.
 @tf.function
-def core(Voxel3D,Mode,MaxOrder,MaxTargetOrder2NormRotate,BinomialCache, CLMCache, CLMCache3D, GCache_complex, GCache_complex_index, GCache_pqr_linear,s_id,n,l,m,mu,k,IsNLM_Value):
-    
+def core(Voxel3D,Corner,GridWidth,BinomialCache, CLMCache, CLMCache3D, GCache_complex, GCache_complex_index, GCache_pqr_linear,MaxOrder,s_id,n,l,m,mu,k,IsNLM_Value):
+
     Dimension_BBox_scaled=tf.shape(Voxel3D)
     X_sample = tf.range(Dimension_BBox_scaled[0] + 1,dtype=tf.float64)
     Y_sample = tf.range(Dimension_BBox_scaled[1] + 1,dtype=tf.float64)
     Z_sample = tf.range(Dimension_BBox_scaled[2] + 1,dtype=tf.float64)
-
+    
     [VolumeMass,Center,_]=z.calculate_bbox_moment(Voxel3D,1,X_sample,Y_sample,Z_sample)
 
-    [AverageVoxelDist2Center,_]=z.calculate_molecular_radius(Voxel3D,Center,VolumeMass,1.80) # Param['default_radius_multiplier'] == 1.80
+    [AverageVoxelDist2Center,MaxVoxelDist2Center]=z.calculate_molecular_radius(Voxel3D,Center,VolumeMass,1.80) # Param['default_radius_multiplier'] == 1.80
 
+    Center_scaled=Center*GridWidth+Corner
+    
     ##################################################################################
     # You may add any preprocessing on the voxel before applying the Zernike moment. #
     ##################################################################################
@@ -60,46 +63,60 @@ def core(Voxel3D,Mode,MaxOrder,MaxTargetOrder2NormRotate,BinomialCache, CLMCache
                                        , CLMCache3D
                                        , SphereBBoxMoment)
 
-    # Mode == 0 is the default, Canterakis normalisation only.
-    # Mode == 1 is for 3DZD's 121 norm.
-    # Mode == 2 is for both 0 and 1
-    ZMList = []
-    if Mode == 0:
-        for TargetOrder2NormRotate in range(2, MaxTargetOrder2NormRotate+1):
-            ABList=z.calculate_ab_rotation(ZMoment_raw, TargetOrder2NormRotate)
-            ZM=z.calculate_zm_by_ab_rotation(ZMoment_raw, BinomialCache, ABList, MaxOrder, CLMCache,s_id,n,l,m,mu,k,IsNLM_Value)
-            ZM_mean, _ = z.get_mean_invariant(ZM)
-            ZMList.append(ZM_mean)                
-    elif Mode == 1:
-        ZM_3DZD_invariant=z.get_3dzd_121_descriptor(ZMoment_scaled)
-        ZMList.append(ZM_3DZD_invariant)
-    elif Mode == 2:
-        ZM_3DZD_invariant=z.get_3dzd_121_descriptor(ZMoment_scaled)
-        ZMList.append(ZM_3DZD_invariant)
+    ABList_2=z.calculate_ab_rotation_all(ZMoment_raw, 2)
+    ABList_3=z.calculate_ab_rotation_all(ZMoment_raw, 3)
+    ABList_4=z.calculate_ab_rotation_all(ZMoment_raw, 4)
+    ABList_5=z.calculate_ab_rotation_all(ZMoment_raw, 5)
+    ABList_6=z.calculate_ab_rotation_all(ZMoment_raw, 6)
 
-        for TargetOrder2NormRotate in range(2, MaxTargetOrder2NormRotate+1):
-            ABList=z.calculate_ab_rotation(ZMoment_raw, TargetOrder2NormRotate)
-            ZM=z.calculate_zm_by_ab_rotation(ZMoment_raw, BinomialCache, ABList, MaxOrder, CLMCache,s_id,n,l,m,mu,k,IsNLM_Value)
-            ZM_mean, _ = z.get_mean_invariant(ZM)
-            ZMList.append(ZM_mean)  
+    ABList_all=tf.concat([tf.reshape(ABList_2,[-1,2]),tf.reshape(ABList_3,[-1,2]),tf.reshape(ABList_4,[-1,2]),tf.reshape(ABList_5,[-1,2]),tf.reshape(ABList_6,[-1,2])],axis=0)
+    ZMList_all=z.calculate_zm_by_ab_rotation(ZMoment_raw, BinomialCache, ABList_all, MaxOrder, CLMCache,s_id,n,l,m,mu,k,IsNLM_Value)
+    ZMList_all = tf.boolean_mask(ZMList_all, ~tf.math.is_nan(tf.math.real(ZMList_all)))
 
-    return tf.concat([tf.reshape(tf.boolean_mask(z, ~tf.math.is_nan(z)), [-1]) for z in ZMList], axis=0)
+    # Based on ABList_all, it is known in advance that Order 6 will definitely have 96 pairs of AB, which means 96 vectors.
+    ZMList_all = tf.reshape(ZMList_all, [-1,96])
+
+    return Center_scaled, ABList_all,ZMList_all
+
+@tf.function
+def CalMatrix(data1, data2):
+    Center_scaled_A=data1[0]
+    ABList_A=data1[1]
+    ZMList_A=data1[2]
+
+    Center_scaled_B=data2[0]
+    ABList_B=data2[1]
+    ZMList_B=data2[2]
+
+    M = tf.math.abs(tf.linalg.matmul(tf.transpose(tf.math.conj(ZMList_A)), ZMList_B)) # square matrix A^T*B 
+    MaxValueIndex = tf.where(M == tf.math.reduce_max(M))  # MaxValueIndex is a tuple that contains an nd array.
+    
+    i,j=MaxValueIndex[0,0], MaxValueIndex[0,1]
+    
+    RotM_A=z.get_transform_matrix_from_ab_list(ABList_A[i,0],ABList_A[i,1],Center_scaled_A)
+    RotM_B=z.get_transform_matrix_from_ab_list(ABList_B[j,0],ABList_B[j,1],Center_scaled_B)
+    
+    TargetRotM = tf.linalg.solve(RotM_B, RotM_A)
+
+    return TargetRotM
 
 
-
-def ZMPY_TF_CLI_BatchZM(PDBFileName,GridWidth=1.0, MaxOrder=6, MaxTargetOrder2NormRotate=5, Mode=0):
+def ZMPY3D_TF_CLI_BatchSuperA2B(PDBFileNameA, PDBFileNameB):
+    
+    MaxOrder=int(6) 
+    GridWidth= 1.00
 
     BinomialCacheFilePath = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache_data'), 'BinomialCache.pkl')
     with open(BinomialCacheFilePath, 'rb') as file: # Used at the entry point, it requires __file__ to identify the package location
     # with open('./cache_data/BinomialCache.pkl', 'rb') as file: # Can be used in ipynb, but not at the entry point. 
         BinomialCachePKL = pickle.load(file)
-    
+
     LogCacheFilePath=os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cache_data'), 'LogG_CLMCache_MaxOrder{:02d}.pkl'.format(MaxOrder))
     with open(LogCacheFilePath, 'rb') as file: # Used at the entry point, it requires __file__ to identify the package location
     # with open('./cache_data/LogG_CLMCache_MaxOrder{:02d}.pkl'.format(MaxOrder), 'rb') as file: # Can be used in ipynb, but not at the entry point. 
-        CachePKL = pickle.load(file)
-    
-    # Extract all cached variables from pickle. These will be converted into a tensor/cupy objects for ZMPY_CP and ZMPY_TF.
+        CachePKL = pickle.load(file)  
+
+    # Extract all cached variables from pickle. These will be converted into a tensor/cupy objects for ZMPY3D_CP and ZMPY3D_TF.
     BinomialCache= tf.convert_to_tensor(BinomialCachePKL['BinomialCache'], dtype=tf.float64)
     
     # GCache, CLMCache, and all RotationIndex
@@ -108,7 +125,7 @@ def ZMPY_TF_CLI_BatchZM(PDBFileName,GridWidth=1.0, MaxOrder=6, MaxTargetOrder2No
     GCache_complex_index= tf.convert_to_tensor(CachePKL['GCache_complex_index'])
     CLMCache3D= tf.convert_to_tensor(CachePKL['CLMCache3D'],dtype=tf.complex128)
     CLMCache= tf.convert_to_tensor(CachePKL['CLMCache'], dtype=tf.float64)
-
+    
     RotationIndex=CachePKL['RotationIndex']
 
     # RotationIndex is a structure, must be [0,0] to accurately obtain the s_id ... etc, within RotationIndex.
@@ -119,39 +136,45 @@ def ZMPY_TF_CLI_BatchZM(PDBFileName,GridWidth=1.0, MaxOrder=6, MaxTargetOrder2No
     mu  =tf.convert_to_tensor(np.squeeze(RotationIndex['mu'][0,0]), dtype=tf.int64)
     k   =tf.convert_to_tensor(np.squeeze(RotationIndex['k'] [0,0]), dtype=tf.int64)
     IsNLM_Value=tf.convert_to_tensor(np.squeeze(RotationIndex['IsNLM_Value'][0,0])-1, dtype=tf.int64)
+    
+    VD_A = (z.pdb_2_voxel_xyz_weight_dataset(PDBFileNameA, GridWidth)
+           .map(lambda v, xyz, w, c: core(v, c, GridWidth, BinomialCache, CLMCache, CLMCache3D, 
+                                          GCache_complex, GCache_complex_index, 
+                                          GCache_pqr_linear, MaxOrder, s_id, n, l, m, mu, 
+                                          k, IsNLM_Value),
+                num_parallel_calls=tf.data.AUTOTUNE)
+           .prefetch(10))
 
+    VD_B = (z.pdb_2_voxel_xyz_weight_dataset(PDBFileNameB, GridWidth)
+           .map(lambda v, xyz, w, c: core(v, c, GridWidth, BinomialCache, CLMCache, CLMCache3D, 
+                                          GCache_complex, GCache_complex_index, 
+                                          GCache_pqr_linear, MaxOrder, s_id, n, l, m, mu, 
+                                          k, IsNLM_Value),
+                num_parallel_calls=tf.data.AUTOTUNE)
+           .prefetch(10))
 
-    VD = (
-        z.pdb_2_voxel_dataset(PDBFileName, GridWidth)
-        .map(
-            lambda x: core(
-                x, Mode, MaxOrder, MaxTargetOrder2NormRotate, BinomialCache, 
-                CLMCache, CLMCache3D, GCache_complex, GCache_complex_index, 
-                GCache_pqr_linear, s_id, n, l, m, mu, k, IsNLM_Value
-            ),
-            num_parallel_calls=tf.data.AUTOTUNE
-        )
-        .prefetch(10)
-    )
+    VD_AB = tf.data.Dataset.zip((VD_A, VD_B)).map( CalMatrix  ,num_parallel_calls=tf.data.AUTOTUNE)
 
-    ZM = [ v for v in VD]
+    # TargetRotMList=[]
+    # for m in VD_AB:
+    #     TargetRotMList.append(m)
 
-    return ZM
+    TargetRotM_tensor = zip(*VD_AB)
+    TargetRotMList = tf.stack(list(TargetRotM_tensor),axis=1)
+
+    return TargetRotMList
+
 
 
 def main():
-    if len(sys.argv) != 6:
-        print('Usage: ZMPY_TF_CLI_BatchZM PDBFileList GridWidth MaximumOrder NormOrder Mode')
-        print('    This function computes the Zernike moment based on the specified maximum order, normalization order, and voxel gridding width.')
-        print("Error: You must provide exactly five input arguments.")
+    if len(sys.argv) != 2:
+        print('Usage: ZMPY3D_TF_CLI_BatchSuperA2B PDBFileList.txt')
+        print('       This function takes a list of paired PDB structure file paths to generate transformation matrices.')
+        print("Error: You must provide exactly one input file.")
         sys.exit(1)
 
-    parser = argparse.ArgumentParser(description="Process a .txt file that contains paths to .pdb or .txt files.")
-    parser.add_argument('input_file', type=str, help='The input file to process (must end with .txt) containing paths to .pdb or .txt files.')
-    parser.add_argument('GW', type=float, choices=[0.25, 0.50, 1.00], help='Grid width must be 0.25, 0.50 or 1.00.')
-    parser.add_argument('MaxOrder', type=int, choices=[6, 20, 40], help='Maximum order of calculating ZM must be 6, 20, or 40.')
-    parser.add_argument('MaxN', type=int, help='Maximum normalisation order must be an integer number.')
-    parser.add_argument('Mode', type=int, choices=[0, 1, 2], help='Mode must be 0, 1 or 2.')
+    parser = argparse.ArgumentParser(description='Process input file that contains paths to .pdb or .txt files.')
+    parser.add_argument('input_file', type=str, help='The input file that contains paths to .pdb or .txt files.')
 
     args = parser.parse_args()
 
@@ -162,32 +185,33 @@ def main():
     if not os.path.isfile(input_file):
         parser.error("File does not exist")
 
-    if args.MaxN > args.MaxOrder or args.MaxN < 2:
-        parser.error("Maximum normalisation order must be larger than 2 and less than or equal to the maximum order of calculating ZM.")
-
     with open(input_file, 'r') as file:
         lines = file.readlines()
 
-
-    pdb_file_list=[]
+    file_list_1 = []
+    file_list_2 = []
     for line in lines:
-        pdb_file = line.strip()
 
-        if not (pdb_file.endswith('.pdb') or pdb_file.endswith('.txt')):
-            parser.error("File must end with .pdb or .txt")
+        files = line.strip().split()
+        if len(files) != 2:
+            print(f"Error: Each line must contain exactly two file paths, but got {len(files)}.")
+            sys.exit(1)
+        file1, file2 = files
         
-        if not os.path.isfile(pdb_file):
-            parser.error("File does not exist")
+        for file in [file1, file2]:
+            if not (file.endswith('.pdb') or file.endswith('.txt')):
+                print(f"Error: File {file} must end with .pdb or .txt.")
+                sys.exit(1)
+            if not os.path.isfile(file):
+                print(f"Error: File {file} does not exist.")
+                sys.exit(1)
+        file_list_1.append(file1)
+        file_list_2.append(file2)
 
-        pdb_file_list.append(pdb_file)
+    TargetRotM=ZMPY3D_TF_CLI_BatchSuperA2B(file_list_1, file_list_2)
 
-    Result=ZMPY_TF_CLI_BatchZM(pdb_file_list,args.GW,args.MaxOrder,args.MaxN,args.Mode)
+    for M in TargetRotM:
+        print(M)
 
-    np.set_printoptions(threshold=Result[0].numpy().size)
-
-    for x in Result:
-        print(x.numpy())
-        print('\n')    
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

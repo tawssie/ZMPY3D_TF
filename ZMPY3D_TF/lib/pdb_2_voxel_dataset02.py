@@ -23,7 +23,6 @@
 
 
 import tensorflow as tf
-import ZMPY_TF as z
 
 from .get_global_parameter02 import *
 from .get_residue_gaussian_density_cache02 import *
