@@ -1,36 +1,40 @@
-# ZMPY_TF
+# ZMPY3D_TF
 
-ZMPY: accelerating protein structure volume analysis through vectorized 3D Zernike Moments and Python-based GPU Integration
+ZMPY3D: accelerating protein structure volume analysis through vectorized 3D Zernike Moments and Python-based GPU Integration
 
-This repository is a Tensorflow implementation.
+For CPU support only, please refer to the repository:
 
-For GPU support with CuPy, please refer to the other repository:
-`ZMPY_CP` supports `CuPy`
-(https://github.com/tawssie/ZMPY_CP)
+`ZMPY3D` supports `NumPy`
+(https://github.com/tawssie/ZMPY3D)
 
-For CPU support only, please refer to the other repository:
-`ZMPY` supports `NumPy`
-(https://github.com/tawssie/ZMPY)
+For GPU support with TensorFlow and CuPy, please refer to the other two repositories:
 
-Here presents a Python-based software package, ZMPY, to accelerate the moments computation by vectorizing the mathematical formulae, enabling their computation in graphical processing units (GPUs). The package offers popular GPU-supported libraries such as CuPy and TensorFlow along with NumPy implementations, aiming to improve computational efficiency, adaptability, and flexibility in future algorithmic development. 
+`ZMPY3D_TF` supports `Tensorflow`
+(https://github.com/tawssie/ZMPY3D_TF)
+
+`ZMPY3D_CP` supports `CuPy`
+(https://github.com/tawssie/ZMPY3D_CP)
+
+Here presents a Python-based software package, ZMPY3D, to accelerate the moments computation by vectorizing the mathematical formulae, enabling their computation in graphical processing units (GPUs). The package offers popular GPU-supported libraries such as CuPy and TensorFlow along with NumPy implementations, aiming to improve computational efficiency, adaptability, and flexibility in future algorithmic development. 
 
 ## Installation
 
 **Prerequisites:**
-* ZMPY   : Python >=3.9.16, NumPy >=1.23.5
-* ZMPY_CP: Python >=3.9.16, NumPy, CuPy >=12.2.0
-* ZMPY_TF: Python >=3.9.16, NumPy >=1.23.5, Tensorflow >=2.12.0, Tensorflow-Probability >=0.20.1
+* ZMPY3D   : Python >=3.9.16, NumPy >=1.23.5
+* ZMPY3D_CP: Python >=3.9.16, NumPy, CuPy >=12.2.0
+* ZMPY3D_TF: Python >=3.9.16, NumPy >=1.23.5, Tensorflow >=2.12.0, Tensorflow-Probability >=0.20.1
 
 1. Open the terminal
 2. Using pip to install the package through PyPI
-3. Run `pip install ZMPY_TF` for the installation
+3. Run `pip install ZMPY3D_TF` for the installation
 
 
-## Usage (Google Colab notebooks)
+## Usage
+* 3D Zernike moments with Tensorflow: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tawssie/ZMPY3D/blob/main/ZMPY3D_demo_zm.ipynb)
+* Shape similarity with CuPy: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tawssie/ZMPY3D/blob/main/ZMPY3D_demo_shape.ipynb) 
+* Structure superposition with NumPy: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tawssie/ZMPY3D/blob/main/ZMPY3D_demo_super.ipynb)
+* Runtime evaluation: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tawssie/ZMPY3D/blob/main/ZMPY3D_time_evaluation.ipynb) 
 
-* 3D Zernike moments: [access Colab notebook demo here]
-* Shape similarity: [access Colab notebook demo here]
-* Structure superposition: [access Colab notebook demo here]
 
 ## Performances
 
@@ -62,16 +66,16 @@ Note: m = minutes, s = seconds.
 
 ## Cache data for order 40
 
-Due to GitHub's file size limitations, follow these steps to download the cache data for order 40 (1.3G) in the ZMPY_TF package:
+Due to GitHub's file size limitations, follow these steps to download the cache data for order 40 (1.3G) in the ZMPY3D_TF package:
 
 ### 1. Locate Package Folder
 
-- Open your terminal and execute the following command to find the folder of the ZMPY_TF package:
-- `python -c "import ZMPY_TF; print(ZMPY_TF.__file__)"`
-- Note the path, which ends with `/User/path/ptyhon/site-packages/ZMPY_TF/__init__.py`.
+- Open your terminal and execute the following command to find the folder of the ZMPY3D_TF package:
+- `python -c "import ZMPY3D_TF; print(ZMPY3D_TF.__file__)"`
+- Note the path, which ends with `/User/path/ptyhon/site-packages/ZMPY3D_TF/__init__.py`.
 
 ### 2. Navigate to Cache Data Folder
-- Go to the `cache_data` folder at the same level as `__init__.py` file, i.e., `/User/path/ptyhon/site-packages/ZMPY_TF/cache_data`.
+- Go to the `cache_data` folder at the same level as `__init__.py` file, i.e., `/User/path/ptyhon/site-packages/ZMPY3D_TF/cache_data`.
 
 ### 3. Download the Cache File:
 - Download the 1.3 GB max order 40 `.pkl` file to the `cache_data` folder from the link below. https://drive.google.com/uc?id=1RR1rF_5YJqaxNC5AK0Ie_8MswGb0Tttw
@@ -85,7 +89,7 @@ Feel free to submit pull requests for improvements or bug fixes.
 
 ## Citation
 
-Lai, J. S., Burley, S. K., & Duarte, J. M. (2024). ZMPY: Accelerating protein structure volume analysis through vectorized 3D Zernike moments and Python-based GPU integration. (Submitted)
+Lai, J. S., Burley, S. K., & Duarte, J. M. (2024). ZMPY3D: Accelerating protein structure volume analysis through vectorized 3D Zernike moments and Python-based GPU integration. (Submitted)
 
 ## License
 

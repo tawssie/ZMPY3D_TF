@@ -1,14 +1,14 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='ZMPY_TF',
-    version='0.0.1',
+    name='ZMPY3D_TF',
+    version='0.0.2',
     author='Jhih Siang (Sean) Lai',
     author_email='js.lai@uqconnect.edu.au, jsl035@ucsd.edu',
-    description='ZMPY Tensorflow version',
+    description='ZMPY3D Tensorflow version',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/tawssie/ZMPY_TF',
+    url='https://github.com/tawssie/ZMPY3D_TF',
     packages=find_packages(),
     classifiers=[
         'Programming Language :: Python :: 3',
@@ -19,12 +19,12 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'ZMPY_TF_CLI_ZM=ZMPY_TF.ZMPY_TF_CLI_ZM:main',
-            'ZMPY_TF_CLI_SuperA2B=ZMPY_TF.ZMPY_TF_CLI_SuperA2B:main',
-            'ZMPY_TF_CLI_ShapeScore=ZMPY_TF.ZMPY_TF_CLI_ShapeScore:main',
-            'ZMPY_TF_CLI_BatchSuperA2B=ZMPY_TF.ZMPY_TF_CLI_BatchSuperA2B:main',
-            'ZMPY_TF_CLI_BatchShapeScore=ZMPY_TF.ZMPY_TF_CLI_BatchShapeScore:main',
-            'ZMPY_TF_CLI_BatchZM=ZMPY_TF.ZMPY_TF_CLI_BatchZM:main',
+            'ZMPY3D_TF_CLI_ZM=ZMPY3D_TF.ZMPY3D_TF_CLI_ZM:main',
+            'ZMPY3D_TF_CLI_SuperA2B=ZMPY3D_TF.ZMPY3D_TF_CLI_SuperA2B:main',
+            'ZMPY3D_TF_CLI_ShapeScore=ZMPY3D_TF.ZMPY3D_TF_CLI_ShapeScore:main',
+            'ZMPY3D_TF_CLI_BatchSuperA2B=ZMPY3D_TF.ZMPY3D_TF_CLI_BatchSuperA2B:main',
+            'ZMPY3D_TF_CLI_BatchShapeScore=ZMPY3D_TF.ZMPY3D_TF_CLI_BatchShapeScore:main',
+            'ZMPY3D_TF_CLI_BatchZM=ZMPY3D_TF.ZMPY3D_TF_CLI_BatchZM:main',
         ],
     },
 
